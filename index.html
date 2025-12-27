@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FORGE</title>
+  <style>
+    /* --- INDUSTRIAL THEME --- */
+    :root{
+      --bg-color:#0F1115;
+      --panel-bg:#161B22;
+      --accent-main:#FF5722;
+      --text-main:#FFFFFF;
+      --text-muted:#90A4AE;
+      --border:#37474F;
+      
+      --energy:#00E676; 
+      --focus:#29B6F6;   
+      --drive:#FF5722;
+      --danger:#D32F2F; 
+
+      --forge-ember: #FF3D00;
+      --forge-steel: #607D8B;
+      
+      --font-head:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      --font-data:'Courier New',Courier,monospace;
+    }
+
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body{
+      background:var(--bg-color); color:var(--text-main);
+      font-family:var(--font-head); overflow-y:auto; -webkit-overflow-scrolling:touch;
+    }
+
+    .hidden { display: none !important; }
+
+    /* --- SETUP WIZARD --- */
+    #setup-wizard {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #000; z-index: 6000;
+        display: flex; flex-direction: column; align-items: center;
+        padding: 30px; box-sizing: border-box;
+    }
+    .setup-progress {
+        width: 100%; display: flex; gap: 5px; margin-bottom: 40px; margin-top: 20px;
+    }
+    .setup-bar { height: 4px; background: #333; flex-grow: 1; border-radius: 2px; }
+    .setup-bar.active { background: var(--forge-ember); }
+    
+    .setup-content {
+        flex-grow: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; text-align: left;
+    }
+    .setup-head { font-size: 11px; color: var(--energy); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; }
+    .setup-title { font-size: 32px; font-weight: 900; line-height: 1.1; margin-bottom: 20px; text-transform: uppercase; }
+    .setup-body { font-size: 15px; color: var(--text-muted); line-height: 1.6; margin-bottom: 30px; }
+    
+    .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+    .setup-tile { 
+        background: #1a1a1a; border: 1px solid #333; padding: 15px; 
+        border-radius: 4px; text-align: center; cursor: pointer; transition: all 0.2s;
+    }
+    .setup-tile.selected { border-color: var(--energy); background: #111; box-shadow: inset 0 0 10px rgba(0,230,118,0.2); }
+    .st-label { font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .st-desc { font-size: 10px; color: #888; }
+
+    /* --- HERO BANNER --- */
+    #onboarding-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; z-index: 5000;
+      display: flex; flex-direction: column; 
+      justify-content: flex-start !important; 
+      padding: 0 !important;
+      overflow-y: auto; 
+    }
+
+    .forge-hero-wrap {
+        display: block; width: 100%; height: 30vh; min-height: 200px;
+        position: relative; flex-shrink: 0; background-color: #050505;
+        background-image: radial-gradient(circle at 50% 40%, rgba(255, 61, 0, 0.3) 0%, rgba(0,0,0,0) 60%), linear-gradient(to bottom, #1c232b 0%, #050505 100%);
+        background-size: cover;
+    }
+
+    .forge-hero-wrap::after {
+        content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 3px);
+        pointer-events: none;
+    }
+
+    .forge-hero-fade {
+        position: absolute; bottom: 0; left: 0; width: 100%; height: 60%;
+        background: linear-gradient(to bottom, transparent 0%, #000 100%);
+        pointer-events: none; z-index: 2;
+    }
+
+    .ob-content-wrap {
+        width: 100%; padding: 0 30px 60px 30px; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; text-align: center;
+        position: relative; z-index: 10; margin-top: -40px;
+    }
+    
+    .ob-text { font-size: 24px; font-weight: 900; line-height: 1.3; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.8); }
+    .ob-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; max-width: 340px; }
+    
+    .ob-btn {
+      padding: 18px 40px; background: var(--text-main); color: #000;
+      font-weight: 900; letter-spacing: 1px; border: none; border-radius: 4px; cursor: pointer;
+      font-size: 14px; box-shadow: 0 4px 15px rgba(255,255,255,0.1); margin-top: 20px; width: 100%;
+    }
+
+    /* ASSESSMENT LOCK STYLES */
+    .locked-section {
+        opacity: 0.3;
+        pointer-events: none;
+        filter: grayscale(100%);
+        transition: all 0.5s ease;
+    }
+    .unlocked {
+        opacity: 1;
+        pointer-events: auto;
+        filter: grayscale(0%);
+    }
+
+    /* GRATITUDE SUGGESTIONS */
+    .grat-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+    .grat-chip {
+        font-size: 10px; font-weight: 800; color: #fff; background: #222;
+        border: 1px solid #444; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+    }
+    .grat-chip:active { background: var(--accent-main); border-color: var(--accent-main); color: #000; }
+
+    /* MISSION SELECTOR */
+    .ob-option {
+        width: 100%; padding: 15px; background: #1a1a1a; border: 1px solid #333;
+        margin-bottom: 10px; border-radius: 4px; text-align: left; cursor: pointer;
+        position: relative; box-sizing: border-box; transition: all 0.15s ease;
+    }
+    .ob-option.selected { 
+        border-color: var(--energy); background: #111; 
+        box-shadow: 0 0 15px rgba(0, 230, 118, 0.1) inset;
+    }
+    .ob-option.selected::after { 
+        content: "SELECTED"; position: absolute; right: 15px; top: 15px; 
+        color: var(--energy); font-weight: 900; font-size: 10px; letter-spacing: 1px;
+    }
+    .ob-opt-title { font-weight: 900; font-size: 14px; color: #fff; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ob-opt-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+    /* HOME UI */
+    #main-interface{ width:100%; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding-bottom:40px; }
+    
+    .brand-header{ 
+        margin-top:40px; margin-bottom:10px; text-align:center; width: 90%;
+        position: relative; border-top: 1px solid var(--forge-steel); padding-top: 30px;
+        background: radial-gradient(circle at 50% -20%, rgba(255, 61, 0, 0.15), transparent 70%);
+    }
+    .brand-title{font-size:24px; font-weight:900; letter-spacing:1px; text-transform: uppercase;}
+    .root-cause-banner {
+        font-size: 10px; color: #fff; background: #1a1a1a; padding: 8px 16px; 
+        border-radius: 20px; border: 1px solid #333; margin-top: 10px; 
+        text-transform: uppercase; font-weight: 800; letter-spacing: 1px;
+        max-width: 90%; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere;
+    }
+
+    .index-card{
+      width:90%; border-radius:4px; padding:20px;
+      margin-bottom:20px; margin-top: 20px; text-align:center; 
+      background: #161B22; border: 1px solid #37474F;
+    }
+    .index-val{ font-size:56px; font-weight:900; line-height:1; font-family:var(--font-data); }
+    .index-status{font-size:11px; font-weight:800; padding:4px 12px; background:#000; display:inline-block; margin-top:8px; border-radius:4px; letter-spacing: 1px;}
+
+    .log-btn {
+        width: 90%; height: 60px; background: #000; color: var(--text-muted); font-weight: 800; 
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        border-radius: 4px; margin-bottom: 20px; border: 1px solid var(--forge-steel);
+    }
+    .log-main { font-size: 14px; letter-spacing: 1px; color: var(--accent-main); font-weight: 900; }
+    .log-sub { font-size: 10px; opacity: 0.8; margin-top: 4px; color: #fff; }
+
+    #directive-card {
+        width: 90%; background: #1a1a1a; border-left: 4px solid #fff;
+        padding: 15px; box-sizing: border-box; margin-bottom: 20px;
+        display: flex; flex-direction: column; cursor: pointer;
+        border-top: 1px solid rgba(84, 110, 122, 0.3);
+    }
+    .dir-header { font-size: 10px; color: var(--text-muted); font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+    .dir-body { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 8px; }
+    .dir-action { font-size: 11px; color: var(--text-main); text-decoration: underline; font-weight: bold; }
+
+    .triad-container { width: 90%; display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+    .triad-card {
+        background: var(--panel-bg); border: 1px solid rgba(84, 110, 122, 0.4);
+        border-radius: 4px; padding: 25px; cursor: pointer;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .triad-title { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
+    .triad-sub { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; font-weight: 700; }
+    .triad-icon { font-size: 28px; }
+
+    .modal-overlay{
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      z-index:1000; display:flex; flex-direction:column; align-items:center;
+      opacity:0; pointer-events:none; transition:opacity .3s;
+      overflow-y:auto; -webkit-overflow-scrolling:touch;
+      background: #0F1115;
+    }
+    .modal-overlay.visible{opacity:1; pointer-events:auto;}
+    
+    .modal-header{
+      width:90%; display:flex; justify-content:space-between; align-items:center;
+      padding:18px 0 12px 0; border-bottom:1px solid var(--border); margin-bottom:15px;
+      position:sticky; top:0; background:#0F1115; z-index:10; 
+    }
+    .modal-title{ font-size:24px; font-weight:900; letter-spacing: -1px; }
+    .close-icon{ font-size:24px; font-weight:bold; cursor:pointer; padding:10px; }
+
+    /* --- DAILY CHECK POLISH (Modal Log) --- */
+    .modal-desc{
+      width:90%;
+      margin: 0 auto 14px auto;
+      padding: 10px 0 14px 0;
+      border-bottom: 1px solid rgba(55,71,79,0.6);
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .boot-note{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-left: 3px solid var(--forge-steel);
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 14px;
+    }
+    .boot-note strong{ color:#fff; }
+
+    .input-box.journal{
+      font-family: var(--font-head);
+      font-size: 14px;
+      letter-spacing: 0.2px;
+    }
+
+    .slider-row { width: 100%; margin-bottom: 12px; }
+    .range-input { -webkit-appearance: none; width: 100%; height: 4px; background: rgba(255,255,255,0.12); border-radius: 3px; outline: none; }
+    .range-input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #000; box-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+
+    .tool-group { width: 90%; margin-bottom: 30px; }
+    .hub-tool {
+        background: var(--panel-bg); border: 1px solid var(--border);
+        padding: 15px; border-radius: 4px; display: flex; align-items: center; 
+        justify-content: space-between; cursor: pointer; margin-bottom: 10px;
+    }
+    .tool-left { display: flex; align-items: center; gap: 15px; }
+    .tool-name { font-size: 15px; font-weight: 800; color: #fff; }
+    .tool-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .info-btn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+
+    .input-box, .select-box {
+        width: 100%; background: var(--panel-bg); border: 1px solid var(--border);
+        color: #fff; padding: 15px; margin-bottom: 10px; border-radius: 4px;
+        font-family: var(--font-data); font-size: 14px; outline: none; box-sizing: border-box;
+    }
+    .btn-action {
+        width: 100%; height: 50px; background: var(--accent-main); border: none;
+        color: #fff; font-weight: 800; font-size: 15px; border-radius: 4px; margin-top: 5px;
+    }
+    
+    .slider-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-bottom: 6px; letter-spacing: 0.5px;}
+
+    #breath-container{ display:none; flex-direction:column; align-items:center; width:100%; padding-top:40px; gap:20px; }
+    #instruction-text{ font-size:24px; font-weight:900; letter-spacing:2px; height:30px; text-transform: uppercase; }
+    #breath-box{ border: 8px solid #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    #timer-text{ font-size: 50px; font-weight: 900; font-family: var(--font-data); }
+
+    .roster-row { width:100%; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; }
+    .intel-card { width:90%; border-left:4px solid var(--accent-main); padding:15px; margin-bottom:10px; box-sizing: border-box; background: #161B22; }
+    .intel-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+    .stat-box { background: var(--panel-bg); padding: 10px; border-radius: 4px; text-align: center; }
+    .impact-box { width: 90%; margin-bottom: 25px; border-top: 1px solid var(--border); padding-top: 20px; }
+    .impact-row { display: flex; gap: 15px; margin-bottom: 10px; align-items: flex-start; }
+
+    /* QUICK CHECK */
+    .qc-btn-wide {
+        width: 48%; background: #000; border: 1px solid #333; color: #666;
+        font-size: 10px; font-weight: 800; padding: 12px 0; cursor: pointer; border-radius: 2px;
+    }
+    .qc-hit-low { border-color: var(--danger) !important; color: var(--danger) !important; background: rgba(211, 47, 47, 0.1) !important; }
+    .qc-hit-med { border-color: var(--focus) !important; color: var(--focus) !important; background: rgba(41, 182, 246, 0.1) !important; }
+    .qc-hit-hi  { border-color: var(--energy) !important; color: var(--energy) !important; background: rgba(0, 230, 118, 0.1) !important; }
+
+    /* --- TELEMETRY GRAPH --- */
+    .chart-container {
+        width: 100%; height: 200px; background: #0F1115; 
+        border: 1px solid #333; border-radius: 4px; position: relative;
+        margin-bottom: 15px; overflow: hidden;
+    }
+    .chart-svg { width: 100%; height: 100%; display: block; }
+    .chart-line { fill: none; stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .chart-dot { r: 3; stroke-width: 2; fill: #000; }
+    .chart-grid { stroke: #222; stroke-width: 1; }
+    .legend-row { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  </style>
+</head>
+<body>
+
+  <div id="setup-wizard" class="hidden">
+    <div class="setup-progress">
+        <div class="setup-bar active" id="bar-1"></div>
+        <div class="setup-bar" id="bar-2"></div>
+        <div class="setup-bar" id="bar-3"></div>
+        <div class="setup-bar" id="bar-4"></div>
+        <div class="setup-bar" id="bar-5"></div>
+        <div class="setup-bar" id="bar-6"></div>
+    </div>
+    
+    <div class="setup-content hidden" id="step-1">
+        <div class="setup-head">IDENTITY</div>
+        
+        <div class="setup-title" style="font-size:24px; line-height:1.3; text-transform:none; margin-bottom:20px;">
+            FORGE — Built for men who are building something that matters.
+        </div>
+        
+        <div class="setup-body">
+            <div style="font-size:15px; color:#fff; font-weight:700; margin-bottom:30px;">
+                Reduce stress. Sharpen focus. Move forward with intent.
+            </div>
+
+            <div style="border-left: 2px solid var(--forge-ember); padding-left: 15px;">
+                <div style="font-size:13px; color:var(--text-muted); font-style:italic; margin-bottom:6px;">
+                    “What we do now echoes in eternity.”
+                </div>
+                <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#555;">
+                    — Marcus Aurelius
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="setup-content hidden" id="step-2">
+        <div class="setup-head">The System</div>
+        <div class="setup-title">The Daily<br>Loop.</div>
+        <div class="setup-body">
+            1. <strong>LOG</strong><br>Input your status. Be honest.<br><br>
+            2. <strong>DIRECTIVE</strong><br>Receive a specific command based on your data.<br><br>
+            3. <strong>EXECUTE</strong><br>Use built-in breathwork tools to shift state.
+        </div>
+    </div>
+
+    <div class="setup-content hidden" id="step-3">
+        <div class="setup-head">Definitions</div>
+        <div class="setup-title">Core<br>Metrics.</div>
+        <div class="setup-body">
+            <span style="color:var(--energy); font-weight:800;">ENERGY</span><br>Physical capacity. The Battery.<br><br>
+            <span style="color:var(--focus); font-weight:800;">FOCUS</span><br>Mental clarity. The Processor.<br><br>
+            <span style="color:var(--drive); font-weight:800;">DRIVE</span><br>Motivation. The Vector.
+        </div>
+    </div>
+
+    <div class="setup-content hidden" id="step-4">
+        <div class="setup-head">Protocol</div>
+        <div class="setup-title">The<br>Anchor.</div>
+        <div class="setup-body">
+            This is not journaling. This is a psychological peg.<br><br>To operate in chaos, you need a fixed point. We start every session with <strong>"Gratitude"</strong> to mechanically lower cortisol and prime the mind for output.
+        </div>
+    </div>
+
+    <div class="setup-content hidden" id="step-5">
+        <div class="setup-head">Baseline 1/2</div>
+        <div class="setup-title">Physiology.</div>
+        <div class="setup-body" style="margin-bottom:15px;">Set your defaults to improve directives.</div>
+        
+        <div style="font-size:10px; color:#888; margin-bottom:5px;">TYPICAL SLEEP QUALITY</div>
+        <div class="setup-grid" style="margin-bottom:20px;">
+            <div class="setup-tile" onclick="selectSetup('sleep', 'POOR', this)"><div class="st-label">POOR</div><div class="st-desc">&lt; 6 Hrs</div></div>
+            <div class="setup-tile" onclick="selectSetup('sleep', 'OK', this)"><div class="st-label">OKAY</div><div class="st-desc">6-7 Hrs</div></div>
+            <div class="setup-tile" onclick="selectSetup('sleep', 'GOOD', this)"><div class="st-label">GOOD</div><div class="st-desc">7+ Hrs</div></div>
+        </div>
+
+        <div style="font-size:10px; color:#888; margin-bottom:5px;">PHYSICAL ACTIVITY LEVEL</div>
+        <div class="setup-grid">
+            <div class="setup-tile" onclick="selectSetup('activity', 'LOW', this)"><div class="st-label">LOW</div><div class="st-desc">Desk</div></div>
+            <div class="setup-tile" onclick="selectSetup('activity', 'MOD', this)"><div class="st-label">MOD</div><div class="st-desc">Active</div></div>
+            <div class="setup-tile" onclick="selectSetup('activity', 'HIGH', this)"><div class="st-label">HIGH</div><div class="st-desc">Athlete</div></div>
+        </div>
+    </div>
+
+    <div class="setup-content hidden" id="step-6">
+        <div class="setup-head">Baseline 2/2</div>
+        <div class="setup-title">Load.</div>
+        <div class="setup-body" style="margin-bottom:15px;">Define your engine inputs.</div>
+
+        <div style="font-size:10px; color:#888; margin-bottom:5px;">TYPICAL STRESS LOAD</div>
+        <div class="setup-grid" style="margin-bottom:20px;">
+            <div class="setup-tile" onclick="selectSetup('stress', 'LOW', this)"><div class="st-label">LOW</div><div class="st-desc">Stable</div></div>
+            <div class="setup-tile" onclick="selectSetup('stress', 'MED', this)"><div class="st-label">MED</div><div class="st-desc">Variable</div></div>
+            <div class="setup-tile" onclick="selectSetup('stress', 'HIGH', this)"><div class="st-label">HIGH</div><div class="st-desc">Constant</div></div>
+        </div>
+
+        <div style="font-size:10px; color:#888; margin-bottom:5px;">NUTRITION PROTOCOL</div>
+        <select class="select-box" id="setup-fuel" style="margin-bottom:0;">
+            <option value="BALANCED">Balanced (Standard)</option>
+            <option value="KETO">Keto (Low Carb)</option>
+            <option value="CARNIVORE">Carnivore</option>
+            <option value="IF">Intermittent Fasting</option>
+        </select>
+    </div>
+
+    <button class="ob-btn" onclick="nextSetupStep()" id="setup-next-btn">NEXT</button>
+  </div>
+
+  <div id="onboarding-screen" class="hidden">
+    <div class="forge-hero-wrap"><div class="forge-hero-fade"></div></div>
+    <div class="ob-content-wrap" id="ob-content">
+      <div class="ob-text" id="ob-title">BASELINE ASSESSMENT</div>
+      
+      <div style="width:100%; margin-bottom:25px; border-bottom:1px solid #333; padding-bottom:20px;">
+          <div style="font-size:11px; font-weight:800; color:var(--energy); margin-bottom:8px; text-transform:uppercase;">Prime The System</div>
+          <div class="ob-sub" style="margin-bottom:10px;">One clear anchor to frame your mindset.</div>
+          <input id="ob-gratitude" placeholder="I am grateful for..." style="width:100%; padding:15px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; font-size:14px;" oninput="checkGratitude()">
+          <div class="grat-chips">
+              <div class="grat-chip" onclick="setGratitude('My Family')">My Family</div>
+              <div class="grat-chip" onclick="setGratitude('My Health')">My Health</div>
+              <div class="grat-chip" onclick="setGratitude('Opportunity')">Opportunity</div>
+          </div>
+      </div>
+
+      <div id="ob-assessment-block" class="locked-section" style="width: 100%; margin-bottom: 25px;">
+          <div style="font-size:11px; font-weight:800; color:#fff; margin-bottom:15px; text-transform:uppercase; text-align:left;">Current Status</div>
+          
+          <div class="slider-row">
+            <div class="slider-label"><span style="color:var(--energy);">ENERGY</span><span id="ob-val-energy">50%</span></div>
+            <input type="range" class="range-input" id="ob-range-energy" min="0" max="100" value="50" oninput="updateObUI('energy', this.value)" onchange="updateObUI('energy', this.value)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label"><span style="color:var(--focus);">FOCUS</span><span id="ob-val-focus">50%</span></div>
+            <input type="range" class="range-input" id="ob-range-focus" min="0" max="100" value="50" oninput="updateObUI('focus', this.value)" onchange="updateObUI('focus', this.value)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label"><span style="color:var(--drive);">DRIVE</span><span id="ob-val-drive">50%</span></div>
+            <input type="range" class="range-input" id="ob-range-drive" min="0" max="100" value="50" oninput="updateObUI('drive', this.value)" onchange="updateObUI('drive', this.value)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label"><span style="color:#fff;">SLEEP QUALITY</span><span id="ob-val-sleep">50%</span></div>
+            <input type="range" class="range-input" id="ob-range-sleep" min="0" max="100" value="50" oninput="updateObUI('sleep', this.value)" onchange="updateObUI('sleep', this.value)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label"><span style="color:#fff;">NUTRITION QUALITY</span><span id="ob-val-nutrition">50%</span></div>
+            <input type="range" class="range-input" id="ob-range-nutrition" min="0" max="100" value="50" oninput="updateObUI('nutrition', this.value)" onchange="updateObUI('nutrition', this.value)">
+          </div>
+      </div>
+
+      <div id="ob-mission-block" class="locked-section" style="width: 100%; margin-bottom: 20px; text-align: left;">
+          <div style="font-size:11px; font-weight:800; color:#fff; margin-bottom:10px; text-transform:uppercase;">Primary Driver</div>
+          <div class="ob-option" id="opt-FAMILY" onclick="toggleRoot('FAMILY', event)">
+              <div class="ob-opt-title">PROVIDER / PROTECTOR</div>
+              <div class="ob-opt-desc">To be a better husband, father, and leader.</div>
+          </div>
+          <div class="ob-option" id="opt-FREEDOM" onclick="toggleRoot('FREEDOM', event)">
+              <div class="ob-opt-title">SOVEREIGNTY</div>
+              <div class="ob-opt-desc">To control my time and financial destiny.</div>
+          </div>
+          <div class="ob-option" id="opt-LEGACY" onclick="toggleRoot('LEGACY', event)">
+              <div class="ob-opt-title">LEGACY</div>
+              <div class="ob-opt-desc">To build something that outlasts me.</div>
+          </div>
+      </div>
+      
+      <button class="ob-btn" id="ob-init-btn" onclick="submitOnboarding()">INITIALIZE SYSTEM</button>
+    </div>
+  </div>
+
+  <div id="main-interface">
+    <div class="brand-header">
+      <div class="brand-title">FORGE</div>
+      <div style="font-size:9px; color:var(--text-muted); opacity:0.7; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-top:4px; margin-bottom:8px;">Provided by The Lockman Lounge</div>
+      <div class="root-cause-banner" id="dashboard-root-cause">LOADING...</div>
+    </div>
+
+    <div class="index-card">
+      <div style="font-size:10px; color:#90A4AE; letter-spacing: 2px; font-weight: 700;">OPERATOR INDEX</div>
+      <div class="index-val" id="index-display">--%</div>
+      <div class="index-status" id="index-status">UNLOGGED</div>
+    </div>
+
+    <div id="quick-check-ui" class="hidden" style="width:90%; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+        <div class="stat-label" style="font-size:10px;">QUICK STATUS INPUT</div>
+        <div class="stat-label" style="font-size:10px; color:#666;">Adjust sliders to match reality</div>
+      </div>
+      <div id="qc-grid" style="background:var(--panel-bg); border:1px solid var(--border); padding:15px; border-radius:4px;">
+        
+        <div class="slider-row">
+          <div class="slider-label"><span style="color:var(--energy);">ENERGY</span><span id="qc-val-energy">50%</span></div>
+          <input type="range" class="range-input" id="qc-range-energy" min="0" max="100" value="50" oninput="updateQuickUI('energy', this.value)" onchange="updateQuickUI('energy', this.value)">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label"><span style="color:var(--focus);">FOCUS</span><span id="qc-val-focus">50%</span></div>
+          <input type="range" class="range-input" id="qc-range-focus" min="0" max="100" value="50" oninput="updateQuickUI('focus', this.value)" onchange="updateQuickUI('focus', this.value)">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label"><span style="color:var(--drive);">DRIVE</span><span id="qc-val-drive">50%</span></div>
+          <input type="range" class="range-input" id="qc-range-drive" min="0" max="100" value="50" oninput="updateQuickUI('drive', this.value)" onchange="updateQuickUI('drive', this.value)">
+        </div>
+
+        <div style="height:1px; background:#333; margin:15px 0;"></div>
+        
+        <div class="slider-row">
+            <div class="slider-label"><span>SLEEP QUALITY</span><span id="qc-val-sleep">50%</span></div>
+            <input type="range" class="range-input" id="qc-range-sleep" min="0" max="100" value="50" oninput="updateQuickUI('sleep', this.value)" onchange="updateQuickUI('sleep', this.value)">
+        </div>
+
+        <div class="slider-row">
+            <div class="slider-label"><span>NUTRITION QUALITY</span><span id="qc-val-fuel">50%</span></div>
+            <input type="range" class="range-input" id="qc-range-fuel" min="0" max="100" value="50" oninput="updateQuickUI('fuel', this.value)" onchange="updateQuickUI('fuel', this.value)">
+        </div>
+
+        <button class="btn-action" style="height:40px; font-size:12px; margin-top:10px;" onclick="submitQuickCheck()">LOG STATUS</button>
+      </div>
+    </div>
+
+    <button class="log-btn" onclick="openModal('modal-log')">
+      <div class="log-main">START DAILY CHECK</div>
+      <div class="log-sub">Log state → Get next move</div>
+    </button>
+    
+    <div id="directive-card" class="hidden" onclick="executeDirective()">
+        <div class="dir-header" id="dir-type">FORGE DIRECTIVE</div>
+        <div class="dir-body" id="dir-msg">Loading...</div>
+        <div class="dir-action" id="dir-action-text">INITIATE PROTOCOL -></div>
+    </div>
+
+    <div id="intel-nugget" class="hidden" style="width:90%; margin-bottom:20px; font-size:11px; color:var(--text-muted); font-style:italic; text-align:center; border-top:1px solid #222; padding-top:10px;">Loading Intel...</div>
+
+    <div style="font-size:10px; color:#444; margin-bottom:15px; font-weight: bold;" id="streak-display">0 DAYS</div>
+
+    <div class="triad-container">
+      <div class="triad-card t-energy" onclick="openModal('modal-energy')">
+        <div><div class="triad-title">ENERGY</div><div class="triad-sub">Fuel the engine</div></div>
+        <div class="triad-icon" style="color:var(--energy)">⚡</div>
+      </div>
+      <div class="triad-card t-focus" onclick="openModal('modal-focus')">
+        <div><div class="triad-title">FOCUS</div><div class="triad-sub">Clear the signal</div></div>
+        <div class="triad-icon" style="color:var(--focus)">🎯</div>
+      </div>
+      <div class="triad-card t-drive" onclick="openModal('modal-drive')">
+        <div><div class="triad-title">DRIVE</div><div class="triad-sub">Set direction</div></div>
+        <div class="triad-icon" style="color:var(--drive)">🔥</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px; font-size:11px; text-decoration: underline; color:#444; cursor:pointer;" onclick="openModal('modal-intel')">SYSTEM INTEL</div>
+  </div>
+
+  <div class="modal-overlay" id="modal-energy">
+    <div class="modal-header">
+      <div><div class="modal-title" style="color:var(--energy)">ENERGY</div><div class="modal-subtitle" style="color:#fff">Fuel the engine</div></div>
+      <div class="close-icon" onclick="closeModal('modal-energy')">[X]</div>
+    </div>
+    <div class="modal-desc">Energy is physical capacity.<br>When energy is low, motivation doesn’t fix it — inputs do.</div>
+    <div class="tool-group">
+      <div class="group-label" style="color:var(--energy)">Quick Tune (Baseline)</div>
+      <div class="hub-tool" onclick="startBreathSession('SLEEP')">
+        <div class="tool-left"><div class="tool-icon">💤</div><div><div class="tool-name">Sleep Protocol</div><div class="tool-desc">SLEEP 4-in / 7-hold / 8-out. Downshift.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'SLEEP')">i</div>
+      </div>
+      <div class="hub-tool" onclick="startBreathSession('CHARGE')">
+        <div class="tool-left"><div class="tool-icon">⚡</div><div><div class="tool-name">Charge Protocol</div><div class="tool-desc">CHARGE 3-in / 3-out. Increase alertness.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'CHARGE')">i</div>
+      </div>
+      <div class="hub-tool" onclick="openModal('modal-nap')">
+        <div class="tool-left"><div class="tool-icon">🔋</div><div><div class="tool-name">Nap Log</div><div class="tool-desc">Log strategic recovery.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'NAP')">i</div>
+      </div>
+      <div class="hub-tool" onclick="toggleSection('fuel-ui')">
+        <div class="tool-left"><div class="tool-icon">⛽</div><div><div class="tool-name">Fuel Check</div><div class="tool-desc">Are you fueled or dragging?</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'FUEL')">i</div>
+      </div>
+      <div id="fuel-ui" class="hidden" style="padding:10px; background:#111; border:1px solid #333; margin-top:5px;">
+        <div class="intel-body" id="fuel-display-text">Current: Balanced.</div>
+        <button class="btn-action" style="height:30px; font-size:11px; background:#333;" onclick="openModal('modal-fuel-setup')">CHANGE PROTOCOL</button>
+      </div>
+    </div>
+    <div class="tool-group">
+      <div class="group-label" style="color:#fff">Build Session</div>
+      <div class="hub-tool" style="cursor:default;">
+        <div class="tool-left" style="width:100%;">
+            <div class="tool-icon">💪</div>
+            <div style="width:100%;">
+              <div class="tool-name">Training Log</div>
+              <select class="select-box" id="quick-train" onchange="logTraining()" style="margin:5px 0 0 0; font-size:12px; padding:10px;">
+                <option value="">Did you train today?</option>
+                <option value="NONE">No Training</option>
+                <option value="LIGHT">Light (Walk/Mobility)</option>
+                <option value="HARD">Hard (Lift/Run)</option>
+              </select>
+            </div>
+        </div>
+        <div class="info-btn" onclick="showInfo(event, 'TRAINING')">i</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-nap">
+    <div class="modal-header">
+        <div class="modal-title">NAP LOG</div>
+        <div class="close-icon" onclick="closeModal('modal-nap')">[X]</div>
+    </div>
+    <div class="modal-desc">Strategic recovery. Does not overwrite baseline sleep.</div>
+    <div class="tool-group">
+        <div style="font-size:10px; color:var(--text-muted); margin-bottom:8px; font-weight:800;">DURATION (MINUTES)</div>
+        <div class="grat-chips" style="justify-content: space-between; margin-bottom:20px;">
+            <div class="grat-chip" onclick="selectNapDuration(10, this)">10</div>
+            <div class="grat-chip" onclick="selectNapDuration(20, this)">20</div>
+            <div class="grat-chip" onclick="selectNapDuration(30, this)">30</div>
+            <div class="grat-chip" onclick="selectNapDuration(45, this)">45</div>
+            <div class="grat-chip" onclick="selectNapDuration(60, this)">60</div>
+            <div class="grat-chip" onclick="selectNapDuration(90, this)">90</div>
+        </div>
+        
+        <div style="font-size:10px; color:var(--text-muted); margin-bottom:8px; font-weight:800;">QUALITY</div>
+        <select class="select-box" id="nap-quality">
+            <option value="30">Groppy / Poor</option>
+            <option value="60">Okay / Refreshing</option>
+            <option value="85">Solid / High Impact</option>
+        </select>
+        
+        <button class="btn-action" style="background:var(--energy); color:#000;" onclick="saveNap()">LOG RECOVERY</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-focus">
+    <div class="modal-header">
+      <div><div class="modal-title" style="color:var(--focus)">FOCUS</div><div class="modal-subtitle" style="color:#fff">Clear the signal</div></div>
+      <div class="close-icon" onclick="closeModal('modal-focus')">[X]</div>
+    </div>
+    <div class="modal-desc">Focus is attention under control.<br>When stress or noise spikes, decision quality drops.</div>
+    <div class="tool-group">
+      <div class="group-label" style="color:var(--focus)">Quick Tune (Baseline)</div>
+      <div class="hub-tool" onclick="startBreathSession('RESET')">
+        <div class="tool-left"><div class="tool-icon">🔄</div><div><div class="tool-name">Reset Protocol</div><div class="tool-desc">RESET 4-in / 8-out. Downshift breathing.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'RESET')">i</div>
+      </div>
+      <div class="hub-tool" onclick="toggleSection('heat-ui')">
+        <div class="tool-left"><div class="tool-icon">🌡️</div><div><div class="tool-name">Heat Check</div><div class="tool-desc">Management for anger or stress.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'HEAT')">i</div>
+      </div>
+      <div id="heat-ui" class="hidden" style="width:100%; background:#111; padding:15px; box-sizing:border-box; border:1px solid #333; margin-bottom:10px;">
+        <select class="select-box" id="heat-trigger" onchange="runHeatScript()">
+          <option value="">Select Trigger...</option>
+          <option value="DISRESPECT">Disrespect</option>
+          <option value="CHAOS">Chaos/Uncertainty</option>
+          <option value="FATIGUE">Fatigue</option>
+        </select>
+        <div class="intel-body" id="heat-output" style="color:var(--focus); font-weight:bold;">Select a trigger above.</div>
+        <button id="heat-action-btn" class="btn-action hidden" style="background:var(--focus); margin-top:10px;" onclick="startBreathSession('RESET')">RUN RESET PROTOCOL</button>
+      </div>
+    </div>
+    <div class="tool-group">
+      <div class="group-label" style="color:#fff">Work Block</div>
+      <div class="hub-tool" onclick="startBreathSession('FOCUS')">
+        <div class="tool-left"><div class="tool-icon">🟦</div><div><div class="tool-name">Focus Protocol</div><div class="tool-desc">FOCUS 4-4-4-4. Stabilize attention.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'FOCUS')">i</div>
+      </div>
+      <div class="hub-tool" onclick="toggleSection('brain-ui')">
+        <div class="tool-left"><div class="tool-icon">🧠</div><div><div class="tool-name">Clear The Signal</div><div class="tool-desc">Brain dump clutter before working.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'BRAIN')">i</div>
+      </div>
+      <div id="brain-ui" class="hidden" style="width:100%;">
+        <textarea class="input-box" id="brain-dump" placeholder="What is distracting you?" rows="3"></textarea>
+        <button class="btn-action" style="background:var(--focus);" onclick="saveBrainDump()">CLEAR FOG</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-drive">
+    <div class="modal-header">
+      <div><div class="modal-title" style="color:var(--drive)">DRIVE</div><div class="modal-subtitle" style="color:#fff">Set Direction</div></div>
+      <div class="close-icon" onclick="closeModal('modal-drive')">[X]</div>
+    </div>
+    <div class="modal-desc">Drive is purpose in motion.<br>Without direction, energy gets wasted and focus drifts.</div>
+    <div class="tool-group">
+      <div class="group-label" style="color:var(--drive)">Quick Tune (Baseline)</div>
+      <div style="background:var(--panel-bg); padding:15px; border:1px solid var(--border); position: relative;">
+        <div class="info-btn" style="position:absolute; top:10px; right:10px;" onclick="showInfo(event, 'MISSION')">i</div>
+        <div style="font-size:10px; color:var(--text-muted); font-weight:bold; margin-bottom:5px;">MISSION CONTROL</div>
+        <input class="input-box" id="mission-target" placeholder="One Target (No negotiation)..." />
+        <input class="input-box" id="mission-next" placeholder="One Next Action..." />
+        <div style="font-size:10px; color:var(--text-muted); margin:10px 0 5px 0;">CONSTRAINTS (Protect Output)</div>
+        <select class="select-box" id="mission-constraint">
+            <option value="NONE">None</option>
+            <option value="NO_PHONE">No Phone (25 Min)</option>
+            <option value="NO_ALCOHOL">No Alcohol</option>
+            <option value="EARLY_BED">Early Bedtime</option>
+        </select>
+        <button class="btn-action" style="background:var(--drive);" onclick="saveMission()">LOCK MISSION</button>
+      </div>
+    </div>
+    <div class="tool-group">
+      <div class="group-label" style="color:#fff">Reinforcement</div>
+      <div class="hub-tool" onclick="toggleSection('anchor-ui')">
+        <div class="tool-left"><div class="tool-icon">⚓</div><div><div class="tool-name">Anchors</div><div class="tool-desc">What makes today worth showing up for?</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'ANCHOR')">i</div>
+      </div>
+      <div id="anchor-ui" class="hidden" style="width:100%; margin-bottom:10px;">
+        <textarea class="input-box" id="anchor-input" placeholder="Add new anchor..." rows="2"></textarea>
+        <button class="btn-action" style="background:#333; margin-bottom:10px;" onclick="saveAnchor()">LOG ANCHOR</button>
+        <div style="font-size:10px; font-weight:800; color:var(--text-muted); margin-bottom:5px;">ACTIVE ANCHORS:</div>
+        <div id="anchor-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+      </div>
+      <div class="hub-tool" onclick="toggleSection('roster-ui')">
+        <div class="tool-left"><div class="tool-icon">🏆</div><div><div class="tool-name">Standards</div><div class="tool-desc">See the roster.</div></div></div>
+        <div class="info-btn" onclick="showInfo(event, 'STANDARDS')">i</div>
+      </div>
+      <div id="roster-ui" class="hidden" style="width:100%;">
+        <div id="roster-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-log">
+    <div class="modal-header">
+      <div class="modal-title">DAILY CHECK</div>
+      <div class="close-icon" onclick="closeModal('modal-log')">[X]</div>
+    </div>
+    <div class="modal-desc">Log today's state. The data builds clarity over time.</div>
+    
+    <div class="boot-note">
+        <strong>First Log (Daily Boot):</strong> Rate last night's sleep & yesterday's nutrition.<br><br>
+        <strong>Update:</strong> Energy, Focus, Drive & Fuel can be updated later. Sleep is locked after boot—use Nap Log instead.
+    </div>
+
+    <div style="border-bottom:1px solid #333; margin-bottom:20px; padding-bottom:10px;">
+        <div style="font-size:10px; color:var(--text-muted); font-weight:900; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">DAILY BOOT (MINDSET)</div>
+        <div style="font-size:10px; color:#666; margin-bottom:6px;">Start grounded. One anchor. One non-negotiable.</div>
+        <textarea class="input-box journal" id="daily-anchor" placeholder="I’m grateful for... (Required to start day)" rows="2"></textarea>
+        <textarea class="input-box journal" id="daily-goal" placeholder="Non-negotiable today: ___." rows="2"></textarea>
+    </div>
+
+    <div class="slider-row">
+      <div class="slider-label"><span style="color:var(--energy);">ENERGY</span><span id="val-energy">50%</span></div>
+      <input type="range" class="range-input" id="range-energy" min="0" max="100" value="50" oninput="updateSlidersUI()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span style="color:var(--focus);">FOCUS</span><span id="val-focus">50%</span></div>
+      <input type="range" class="range-input" id="range-focus" min="0" max="100" value="50" oninput="updateSlidersUI()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span style="color:var(--drive);">DRIVE</span><span id="val-drive">50%</span></div>
+      <input type="range" class="range-input" id="range-drive" min="0" max="100" value="50" oninput="updateSlidersUI()">
+    </div>
+    <div style="margin-top:20px;">
+      <select class="select-box" id="log-sleep">
+        <option value="2">Sleep: Good (Last Night)</option>
+        <option value="1">Sleep: Okay</option>
+        <option value="0">Sleep: Poor</option>
+      </select>
+      <select class="select-box" id="log-fuel">
+        <option value="2">Fuel: Strict (Yesterday/Today)</option>
+        <option value="1">Fuel: Mostly Clean</option>
+        <option value="0">Fuel: Off Track</option>
+      </select>
+    </div>
+    <button class="btn-action" onclick="submitDailyLog()">SAVE DAILY LOG</button>
+  </div>
+
+  <div class="modal-overlay" id="modal-rerate">
+    <div class="modal-header">
+      <div class="modal-title">SESSION COMPLETE</div>
+      <div class="close-icon" onclick="closeModal('modal-rerate')">[X]</div>
+    </div>
+    <div class="impact-box">
+        <div style="margin-bottom:15px; font-size:11px; font-weight:900; color:var(--text-main); letter-spacing:1px; text-transform:uppercase;">System Impact</div>
+        <div class="impact-row">
+            <div class="impact-icon">🧠</div>
+            <div><div class="impact-label">Mental</div><div class="impact-text" id="impact-mental">...</div></div>
+        </div>
+        <div class="impact-row">
+            <div class="impact-icon">🫀</div>
+            <div><div class="impact-label">Physical</div><div class="impact-text" id="impact-physical">...</div></div>
+        </div>
+    </div>
+    <div class="modal-desc" style="border:none; padding:0; margin-bottom:15px;">Do you feel different? Adjust state if necessary.</div>
+    <div class="slider-row">
+      <div class="slider-label"><span style="color:var(--energy);">ENERGY</span><span id="rr-val-energy">50%</span></div>
+      <input type="range" class="range-input" id="rr-energy" min="0" max="100" value="50" oninput="updateRrateUI()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span style="color:var(--focus);">FOCUS</span><span id="rr-val-focus">50%</span></div>
+      <input type="range" class="range-input" id="rr-focus" min="0" max="100" value="50" oninput="updateRrateUI()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span style="color:var(--drive);">DRIVE</span><span id="rr-val-drive">50%</span></div>
+      <input type="range" class="range-input" id="rr-drive" min="0" max="100" value="50" oninput="updateRrateUI()">
+    </div>
+    <button class="btn-action" onclick="submitReRate()">CONFIRM NEW STATE</button>
+  </div>
+
+  <div class="modal-overlay" id="modal-intel">
+    <div class="modal-header">
+      <div class="modal-title">TELEMETRY</div>
+      <div class="close-icon" onclick="closeModal('modal-intel')">[X]</div>
+    </div>
+    <div class="modal-desc">7-Day Performance Trend.</div>
+    
+    <div style="width:90%;">
+        <div class="chart-container" id="telemetry-chart"></div>
+        
+        <div class="legend-row">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--energy)"></div>Energy</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--focus)"></div>Focus</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--drive)"></div>Drive</div>
+        </div>
+
+        <div class="intel-card" id="intel-content">
+            <div class="intel-body">Loading Analysis...</div>
+        </div>
+    </div>
+</div>
+
+  <div class="modal-overlay" id="modal-fuel-setup">
+    <div class="modal-header"><div class="modal-title">FUEL PROTOCOL</div><div class="close-icon" onclick="closeModal('modal-fuel-setup')">[X]</div></div>
+    <div class="tool-group">
+        <select class="select-box" id="fuel-selector" onchange="updateFuelDesc()">
+            <option value="BALANCED">Balanced</option>
+            <option value="KETO">Keto</option>
+            <option value="CARNIVORE">Carnivore</option>
+            <option value="IF">Intermittent Fasting</option>
+        </select>
+        <div class="intel-card"><div class="intel-body" id="fuel-desc-text">...</div></div>
+        <button class="btn-action" onclick="saveFuelProto()">SAVE PROTOCOL</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="info-modal">
+    <div class="modal-header" style="border:none;"><div></div><div class="close-icon" onclick="closeModal('info-modal')">[X]</div></div>
+    <div style="width:90%; text-align:center; padding-bottom:40px;">
+      <div id="info-title">TOOL NAME</div>
+      <div id="info-body">Description...</div>
+      <button class="btn-action" style="background:#333;" onclick="closeModal('info-modal')">GOT IT</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-breath">
+    <div class="modal-header">
+      <div class="modal-title" id="breath-title-ui">REGULATION</div>
+      <div class="close-icon" onclick="stopBreathSession()">[X]</div>
+    </div>
+    <div class="modal-desc" style="text-align:center; border:none;" id="breath-desc-ui">Regulation isn’t weakness. It’s decision control.</div>
+    <div id="breath-container">
+      <div id="instruction-text">READY</div>
+      <div id="breath-box"><div id="timer-text">0</div></div>
+      <button class="btn-action" style="background:#333; margin-top:30px; width:90%;" onclick="stopBreathSession()">END SESSION</button>
+    </div>
+  </div>
+
+  <script>
+    /* --- IRONCLAD JS (v13 - Gratitude & Assessment) --- */
+    var STORAGE_KEY = 'forge_v13_stable';
+    
+    // VARIABLES
+    var state = { onboarding: false, setupTutorial: false, rootCause: "", fuelProto: "BALANCED", activityLevel: "MOD", stressLevel: "MED", typicalSleep: "OK", streak: 0, xp: 0, dailyLogs: {} };
+    var engine = { active: false, timer: null, interval: null, baseSize: 0, currentType: null };
+    var obStep = 0;
+    var currentDirectiveAction = null;
+    var selectedRoots = [];
+    var setupStep = 1;
+
+    var PROTOCOLS = {
+      'SLEEP':  { inhale: 4000, holdIn: 7000, exhale: 8000, holdOut: 0, desc: "Downshift. SLEEP 4-in / 7-hold / 8-out." }, 
+      'CHARGE': { inhale: 3000, holdIn: 0,    exhale: 3000, holdOut: 0, desc: "Increase alertness. CHARGE 3-in / 3-out." }, 
+      'FOCUS':  { inhale: 4000, holdIn: 4000, exhale: 4000, holdOut: 4000, desc: "Stabilize attention. FOCUS 4-4-4-4." }, 
+      'RESET':  { inhale: 4000, holdIn: 0,    exhale: 8000, holdOut: 0, desc: "Interrupt reactivity. RESET 4-in / 8-out." } 
+    };
+    
+    var TOOL_DEFINITIONS = {
+        'SLEEP': { t: "SLEEP PROTOCOL", d: "SLEEP 4-in / 7-hold / 8-out. Natural tranquilizer." },
+        'CHARGE': { t: "CHARGE PROTOCOL", d: "CHARGE 3-in / 3-out. Increases alertness." },
+        'FUEL': { t: "FUEL CHECK", d: "Nutrition accountability." },
+        'NAP': { t: "NAP LOG", d: "Strategic recovery logging." },
+        'TRAINING': { t: "TRAINING LOG", d: "Track consistency, not just intensity." },
+        'RESET': { t: "RESET PROTOCOL", d: "Downshift breathing. RESET 4-in / 8-out." },
+        'HEAT': { t: "HEAT CHECK", d: "Decision framework for stress." },
+        'FOCUS': { t: "FOCUS PROTOCOL", d: "Box breathing. FOCUS 4-4-4-4." },
+        'BRAIN': { t: "CLEAR THE SIGNAL", d: "Cognitive offloading." },
+        'MISSION': { t: "MISSION CONTROL", d: "One target, one next action." },
+        'ANCHOR': { t: "ANCHORS", d: "Functional gratitude." },
+        'STANDARDS': { t: "STANDARDS", d: "Competition raises performance." }
+    };
+
+    var TOOL_IMPACTS = {
+        'SLEEP': { m: "Quiets internal monologue.", p: "Triggers parasympathetic nervous system." },
+        'CHARGE': { m: "Increases alertness.", p: "Rapidly oxygenates blood." },
+        'RESET': { m: "Interrupts loop thinking.", p: "Offloads CO2. Lowers heart rate." },
+        'FOCUS': { m: "Stabilizes attention span.", p: "Balances O2 and CO2 levels." },
+        'BRAIN': { m: "Reduces cognitive load.", p: "Lowers cortisol." },
+        'MISSION': { m: "Reduces decision fatigue.", p: "Dopamine primer." },
+        'ANCHOR': { m: "Shifts perspective.", p: "Boosts serotonin." },
+        'DEFAULT': { m: "System check complete.", p: "Baseline recorded." }
+    };
+
+    // --- UTILS ---
+    function todayKey() { 
+        var d = new Date(); 
+        var m = d.getMonth() + 1; var day = d.getDate();
+        return d.getFullYear() + '-' + (m<10?'0':'')+m + '-' + (day<10?'0':'')+day; 
+    }
+    function prevKey(dateStr) {
+        var parts = dateStr.split('-');
+        var d = new Date(parts[0], parts[1] - 1, parts[2]);
+        d.setDate(d.getDate() - 1);
+        var m = d.getMonth() + 1; var day = d.getDate();
+        return d.getFullYear() + '-' + (m<10?'0':'')+m + '-' + (day<10?'0':'')+day; 
+    }
+    function toggleSection(id) {
+        var el = document.getElementById(id);
+        if(el.style.display === 'none' || el.classList.contains('hidden')) {
+            el.classList.remove('hidden'); el.style.display = 'block';
+        } else {
+            el.classList.add('hidden'); el.style.display = 'none';
+        }
+    }
+    function safeKeys(obj) {
+        if(!obj) return [];
+        var keys = [];
+        for(var k in obj) { if(Object.prototype.hasOwnProperty.call(obj, k)) keys.push(k); }
+        return keys.sort();
+    }
+
+    // --- CORE FUNCTIONS ---
+    function loadState(){ 
+        var s = localStorage.getItem(STORAGE_KEY); 
+        if(s) { try { state = Object.assign(state, JSON.parse(s)); } catch(e) {} } 
+    }
+    function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    function setGratitude(val) {
+        document.getElementById('ob-gratitude').value = val;
+        checkGratitude();
+    }
+
+    function checkGratitude() {
+        var val = document.getElementById('ob-gratitude').value;
+        var locked = document.getElementsByClassName('locked-section');
+        if(val.length > 3) {
+            for(var i=0; i<locked.length; i++) {
+                locked[i].classList.add('unlocked');
+            }
+        }
+    }
+
+    function toggleRoot(val, e) {
+        if(e) e.stopPropagation();
+        var el = document.getElementById('opt-' + val);
+        var idx = selectedRoots.indexOf(val);
+        if(idx > -1) { selectedRoots.splice(idx, 1); el.classList.remove('selected'); } 
+        else { selectedRoots.push(val); el.classList.add('selected'); }
+    }
+
+    function submitOnboarding(){
+        var grat = document.getElementById('ob-gratitude').value;
+        if(grat.length < 3) { alert("Please complete the Gratitude step."); return; }
+        
+        if(selectedRoots.length === 0) { alert("Please select a Mission Driver."); return; }
+        state.rootCause = selectedRoots.join(' + ');
+
+        var log = getTodayLog();
+        log.energy = parseInt(document.getElementById('ob-range-energy').value);
+        log.focus = parseInt(document.getElementById('ob-range-focus').value);
+        log.drive = parseInt(document.getElementById('ob-range-drive').value);
+        log.sleep = parseInt(document.getElementById('ob-range-sleep').value);
+        log.fuel = parseInt(document.getElementById('ob-range-nutrition').value);
+        
+        log.dailyAnchor = grat;
+        if(log.anchors.indexOf(grat) === -1) {
+            log.anchors.push(grat);
+        }
+
+        log.submitted = true;
+        log.bootCompleted = true;
+        saveTodayLog(log);
+
+        state.onboarding = true;
+        saveState();
+        document.getElementById('onboarding-screen').classList.add('hidden');
+        recalculateStreak();
+        updateUI();
+    }
+
+    function startOnboarding(){ 
+        document.getElementById('onboarding-screen').classList.remove('hidden'); 
+    }
+
+    // --- SETUP WIZARD LOGIC ---
+    function runSetupWizard() {
+        document.getElementById('setup-wizard').classList.remove('hidden');
+        showSetupStep(1);
+    }
+
+    function showSetupStep(n) {
+        setupStep = n;
+        for(var i=1; i<=6; i++) {
+            var bar = document.getElementById('bar-'+i);
+            var content = document.getElementById('step-'+i);
+            if(i <= n) bar.classList.add('active'); else bar.classList.remove('active');
+            if(i === n) content.classList.remove('hidden'); else content.classList.add('hidden');
+        }
+        var btn = document.getElementById('setup-next-btn');
+        if(n === 6) btn.innerText = "INITIALIZE SYSTEM"; else btn.innerText = "NEXT";
+    }
+
+    function nextSetupStep() {
+        if(setupStep < 6) {
+            showSetupStep(setupStep + 1);
+        } else {
+            state.fuelProto = document.getElementById('setup-fuel').value;
+            state.setupTutorial = true;
+            saveState();
+            document.getElementById('setup-wizard').classList.add('hidden');
+            startOnboarding();
+        }
+    }
+
+    function selectSetup(type, val, el) {
+        var sibs = el.parentNode.children;
+        for(var i=0; i<sibs.length; i++) sibs[i].classList.remove('selected');
+        el.classList.add('selected');
+
+        if(type === 'sleep') state.typicalSleep = val;
+        if(type === 'activity') state.activityLevel = val;
+        if(type === 'stress') state.stressLevel = val;
+    }
+
+    // --- INIT ---
+    window.onload = function(){
+      try {
+          loadState();
+          if(!state.setupTutorial) {
+              runSetupWizard();
+          } else if(!state.onboarding) {
+              startOnboarding();
+          } else {
+              recalculateStreak();
+              updateUI();
+              var log = getTodayLog();
+              if(!log.bootCompleted) {
+                  setTimeout(function(){ openModal('modal-log'); }, 250);
+              }
+          }
+          window.addEventListener('resize', function(){ if(engine.active) setBreathBoxSize(); });
+      } catch(e) {
+          alert("Init Error: " + e.message);
+      }
+    };
+
+    function getTodayLog() {
+        var key = todayKey();
+        if (!state.dailyLogs[key]) {
+            state.dailyLogs[key] = { 
+                submitted: false, 
+                bootCompleted: false,
+                energy: 50, focus: 50, drive: 50, sleep: 50, fuel: 50, 
+                tools: {}, mission: null, anchors: [], naps: [],
+                dailyAnchor: "", dailyGoal: "" 
+            };
+        }
+        var log = state.dailyLogs[key];
+        if(log.sleep === undefined) log.sleep = 50;
+        if(log.fuel === undefined) log.fuel = 50;
+        if(!Array.isArray(log.anchors)) log.anchors = [];
+        if(!Array.isArray(log.naps)) log.naps = [];
+        if(!log.tools) log.tools = {};
+        if(typeof log.dailyAnchor !== 'string') log.dailyAnchor = "";
+        if(typeof log.dailyGoal !== 'string') log.dailyGoal = "";
+        return log;
+    }
+    
+    function saveTodayLog(data) { state.dailyLogs[todayKey()] = data; saveState(); updateUI(); }
+
+    function recalculateStreak() {
+        var count = 0; 
+        var maintenanceCount = 0;
+        var current = todayKey();
+        var todayLog = state.dailyLogs[current];
+        if (!todayLog || (!todayLog.bootCompleted && (!todayLog.tools || safeKeys(todayLog.tools).length === 0))) {
+            current = prevKey(current);
+        }
+        while (state.dailyLogs[current]) {
+            var l = state.dailyLogs[current];
+            var toolsUsed = l.tools && safeKeys(l.tools).length > 0;
+            if (l.bootCompleted || toolsUsed) {
+                count++;
+                if (!l.bootCompleted && toolsUsed) maintenanceCount++;
+                current = prevKey(current);
+            } else { break; }
+        }
+        state.streak = count; 
+        var disp = document.getElementById('streak-display');
+        if(disp) {
+            disp.innerText = state.streak + " DAYS";
+            if(maintenanceCount > 0) disp.innerHTML = state.streak + " DAYS <span style='font-size:9px; color:#666;'>(" + maintenanceCount + " MAINT)</span>";
+        }
+        saveState();
+    }
+
+    function updateQuickUI(type, val) {
+        if(type && val) {
+            var el = document.getElementById('qc-val-' + type);
+            if(el) el.innerText = val + "%";
+        }
+    }
+    function updateObUI(type, val) {
+        if(type && val) {
+            var el = document.getElementById('ob-val-' + type);
+            if(el) el.innerText = val + "%";
+        }
+    }
+
+    function submitQuickCheck() {
+        var log = getTodayLog();
+        if (!log.bootCompleted) {
+            alert("Daily Boot required. Start with Gratitude + Sleep + Fuel first.");
+            openModal('modal-log');
+            return;
+        }
+        
+        log.energy = parseInt(document.getElementById('qc-range-energy').value);
+        log.focus = parseInt(document.getElementById('qc-range-focus').value);
+        log.drive = parseInt(document.getElementById('qc-range-drive').value);
+        log.fuel = parseInt(document.getElementById('qc-range-fuel').value);
+        
+        state.xp += 25; 
+        saveTodayLog(log);
+        recalculateStreak();
+    }
+
+    function submitDailyLog(){
+        var log = getTodayLog();
+        var anchor = document.getElementById('daily-anchor').value.trim();
+        if (!log.bootCompleted && anchor.length < 3) {
+            alert("Daily Boot: You must anchor your mindset (Gratitude) before starting the day.");
+            return;
+        }
+
+        log.energy = parseInt(document.getElementById('range-energy').value);
+        log.focus = parseInt(document.getElementById('range-focus').value);
+        log.drive = parseInt(document.getElementById('range-drive').value);
+        
+        if (!log.bootCompleted) {
+            var sSel = document.getElementById('log-sleep').value; 
+            if(sSel == 2) log.sleep = 90; else if(sSel == 1) log.sleep = 50; else log.sleep = 20;
+        }
+
+        var fSel = document.getElementById('log-fuel').value; 
+        if(fSel == 2) log.fuel = 90; else if(fSel == 1) log.fuel = 50; else log.fuel = 20;
+
+        log.dailyAnchor = anchor;
+        log.dailyGoal = document.getElementById('daily-goal').value.trim();
+        
+        if(anchor && log.anchors.indexOf(anchor) === -1) {
+            log.anchors.push(anchor);
+        }
+        
+        log.submitted = true; 
+        log.bootCompleted = true;
+        state.xp += 100;
+        saveTodayLog(log); 
+        recalculateStreak(); 
+        closeModal('modal-log');
+    }
+
+    function updateUI(){
+      var log = getTodayLog();
+      
+      var bannerText = state.rootCause ? "MISSION: " + state.rootCause : "NO MISSION SET";
+      if(state.rootCause === "" || typeof state.rootCause !== 'string') bannerText = "PROTOCOL ACTIVE";
+      if (log.dailyGoal) { bannerText += " | TODAY: " + log.dailyGoal; }
+      document.getElementById('dashboard-root-cause').innerText = bannerText;
+
+      var qcGrid = document.getElementById('quick-check-ui');
+      var logBtn = document.querySelector('.log-btn');
+      
+      var qcSleep = document.getElementById('qc-range-sleep');
+      if(qcSleep) qcSleep.disabled = log.bootCompleted;
+      
+      if (!log.bootCompleted) {
+          qcGrid.classList.add('hidden');
+          logBtn.style.height = "80px";
+          logBtn.style.background = "var(--forge-ember)";
+          logBtn.style.color = "#000";
+          logBtn.querySelector('.log-main').innerText = "INITIATE DAILY BOOT";
+          logBtn.querySelector('.log-sub').innerText = "Mandatory: Sleep + Nutrition + Gratitude";
+          document.getElementById('dir-msg').innerText = "System awaiting Daily Boot sequence.";
+      } else {
+          if(!log.submitted) qcGrid.classList.remove('hidden');
+          logBtn.style.height = "60px";
+          logBtn.style.background = "#000";
+          logBtn.style.color = "var(--text-muted)";
+          logBtn.querySelector('.log-main').innerText = "LOG CHECK-IN";
+          logBtn.querySelector('.log-sub').innerText = "Update Status";
+      }
+      
+      document.getElementById('qc-range-energy').value = log.energy;
+      document.getElementById('qc-range-focus').value = log.focus;
+      document.getElementById('qc-range-drive').value = log.drive;
+      document.getElementById('qc-range-sleep').value = log.sleep;
+      document.getElementById('qc-range-fuel').value = log.fuel;
+      
+      updateQuickUI('energy', log.energy); updateQuickUI('focus', log.focus); updateQuickUI('drive', log.drive);
+      updateQuickUI('sleep', log.sleep); updateQuickUI('fuel', log.fuel);
+
+      document.getElementById('range-energy').value = log.energy;
+      document.getElementById('range-focus').value = log.focus;
+      document.getElementById('range-drive').value = log.drive;
+      updateSlidersUI();
+      
+      if (log.submitted) {
+          var avg = Math.floor((log.energy + log.focus + log.drive) / 3);
+          var el = document.getElementById('index-display');
+          var st = document.getElementById('index-status');
+          
+          el.innerText = avg + "%";
+          if(avg > 80){ st.innerText = "OPTIMAL"; st.style.color = "var(--energy)"; }
+          else if(avg > 50){ st.innerText = "OPERATIONAL"; st.style.color = "var(--focus)"; }
+          else { st.innerText = "CRITICAL"; st.style.color = "var(--danger)"; }
+          
+          var directive = generateDirective(log);
+          if (log.dailyGoal) { directive.msg += " Locked: " + log.dailyGoal + ". Execute."; }
+
+          document.getElementById('dir-type').innerText = "FORGE DIRECTIVE: " + directive.type;
+          document.getElementById('dir-type').style.color = directive.color;
+          document.getElementById('dir-msg').innerText = directive.msg;
+          document.getElementById('directive-card').style.borderLeftColor = directive.color;
+          currentDirectiveAction = directive.action;
+          
+          document.getElementById('directive-card').classList.remove('hidden');
+          document.getElementById('quick-check-ui').classList.add('hidden'); 
+          
+          updateIntelNugget(); 
+      } else {
+          document.getElementById('index-display').innerText = "--%"; 
+          document.getElementById('index-status').innerText = "UNLOGGED";
+          document.getElementById('directive-card').classList.remove('hidden');
+          currentDirectiveAction = function() { openModal('modal-log'); };
+      }
+      
+      document.getElementById('fuel-display-text').innerText = "Current: " + state.fuelProto;
+      if(log.tools && log.tools.training) document.getElementById('quick-train').value = log.tools.training;
+    }
+
+    // --- NAP LOGIC ---
+    var selectedNapDuration = 0;
+    function selectNapDuration(min, el) {
+        selectedNapDuration = min;
+        var sibs = el.parentNode.children;
+        for(var i=0; i<sibs.length; i++) sibs[i].style.background = "#222";
+        el.style.background = "var(--energy)";
+    }
+    
+    function saveNap() {
+        if(selectedNapDuration === 0) { alert("Select duration."); return; }
+        var log = getTodayLog();
+        var qual = parseInt(document.getElementById('nap-quality').value);
+        log.naps.push({ t: Date.now(), minutes: selectedNapDuration, quality: qual });
+        log.energy = Math.min(100, log.energy + 15);
+        log.submitted = true;
+        saveTodayLog(log);
+        alert("Nap logged. Energy updated.");
+        closeModal('modal-nap');
+        updateUI();
+    }
+
+    // --- UPDATED DIRECTIVE LOGIC ---
+    function generateDirective(log) {
+        var hour = new Date().getHours();
+        
+        if (hour >= 10 && hour <= 15) {
+            var sleepHist = [];
+            for(var i=1; i<=3; i++) {
+                var d = new Date(); d.setDate(d.getDate() - i);
+                var m = d.getMonth() + 1; var day = d.getDate();
+                var k = d.getFullYear() + '-' + (m<10?'0':'')+m + '-' + (day<10?'0':'')+day;
+                if(state.dailyLogs[k]) sleepHist.push(state.dailyLogs[k].sleep);
+            }
+            var avgSleep = sleepHist.length ? sleepHist.reduce((a,b)=>a+b,0)/sleepHist.length : 50;
+            if (log.energy < 35 && avgSleep < 60) {
+                var dur = (log.energy < 25 || avgSleep < 40) ? 90 : 45;
+                if(log.energy > 30) dur = 20; 
+                return { type: "NAP RECOMMENDED", color: "var(--energy)", msg: "Sleep debt detected. "+dur+" min nap suggested.", action: function(){ openModal('modal-nap'); } };
+            }
+        }
+
+        if (log.sleep < 30) return { type: "CRITICAL RECOVERY", color: "var(--danger)", msg: "Sleep debt critical. Brain function compromised. Downshift.", action: function(){ startBreathSession('SLEEP'); } };
+        if (log.fuel < 30) return { type: "FUEL DEFICIT", color: "var(--danger)", msg: "Glycogen/Hydration low. Fix inputs before output.", action: function(){ toggleSection('fuel-ui'); } };
+
+        var e = (log.energy !== undefined) ? log.energy : 50;
+        var f = (log.focus !== undefined) ? log.focus : 50;
+        var d2 = (log.drive !== undefined) ? log.drive : 50;
+
+        var lowest = { key: "ENERGY", val: e };
+        if (f < lowest.val) lowest = { key: "FOCUS", val: f };
+        if (d2 < lowest.val) lowest = { key: "DRIVE", val: d2 };
+
+        if (lowest.key === "ENERGY") {
+            if (lowest.val < 40) return { type: "CHARGE REQUIRED", color: "var(--energy)", msg: "System lethargic. Ignite the nervous system.", action: function(){ startBreathSession('CHARGE'); } };
+            return { type: "REINFORCE ENERGY", color: "var(--energy)", msg: "Capacity is your bottleneck. Check fuel/rest.", action: function(){ openModal('modal-energy'); } };
+        }
+        
+        if (lowest.key === "FOCUS") {
+            if (lowest.val < 40) return { type: "SIGNAL NOISE", color: "var(--focus)", msg: "Scatter high. Run Reset Protocol to clear RAM.", action: function(){ startBreathSession('RESET'); } };
+            return { type: "REINFORCE FOCUS", color: "var(--focus)", msg: "Sharpen the signal.", action: function(){ openModal('modal-focus'); } };
+        }
+
+        if (lowest.key === "DRIVE") {
+            if (lowest.val < 40) return { type: "NO VECTOR", color: "var(--drive)", msg: "Motivation low. Re-align with your Anchor/Mission.", action: function(){ openModal('modal-drive'); } };
+            return { type: "REINFORCE DRIVE", color: "var(--drive)", msg: "Direction check required.", action: function(){ openModal('modal-drive'); } };
+        }
+
+        return { type: "SYSTEM OPTIMAL", color: "#fff", msg: "Go execute.", action: function(){ openModal('modal-drive'); } };
+    }
+
+    function updateIntelNugget() {
+        var box = document.getElementById('intel-nugget');
+        var keys = safeKeys(state.dailyLogs);
+        var entries = keys.length;
+        if (entries < 3) {
+            box.innerText = "Intel: Log 3 days to unlock pattern recognition.";
+            box.classList.remove('hidden');
+            return;
+        }
+        var lastKey = keys[entries-1];
+        var last = state.dailyLogs[lastKey];
+        if(!last) return;
+        var msg = "Consistency is the primary metric.";
+        if (last.submitted) {
+            if (last.energy < 50) msg = "Pattern: Low Energy detected. Prioritize sleep tonight.";
+            else if (last.focus < 50) msg = "Pattern: Signal noise high. Clear RAM before working.";
+            else if (last.drive < 50) msg = "Pattern: Drift detected. Re-anchor your mission.";
+            else msg = "Systems nominal. High performance expected.";
+        }
+        box.innerText = msg;
+        box.classList.remove('hidden');
+    }
+
+    function generateIntel() { 
+        var container = document.getElementById('intel-content');
+        var chartBox = document.getElementById('telemetry-chart');
+        
+        var dates = [];
+        var dataPoints = { energy: [], focus: [], drive: [] };
+        
+        for(var i=6; i>=0; i--) {
+            var d = new Date(); d.setDate(d.getDate() - i);
+            var m = d.getMonth() + 1; var day = d.getDate();
+            var k = d.getFullYear() + '-' + (m<10?'0':'')+m + '-' + (day<10?'0':'')+day;
+            dates.push((m)+'/'+day);
+            
+            var log = state.dailyLogs[k];
+            if(log && log.submitted) {
+                dataPoints.energy.push(log.energy);
+                dataPoints.focus.push(log.focus);
+                dataPoints.drive.push(log.drive);
+            } else {
+                dataPoints.energy.push(0);
+                dataPoints.focus.push(0);
+                dataPoints.drive.push(0);
+            }
+        }
+
+        var w = 100;
+        var step = w / 6;
+        
+        function makePath(arr, color) {
+            var d = "";
+            arr.forEach(function(val, idx){
+                var x = idx * step;
+                var y = 100 - val; 
+                if(idx===0) d += "M "+x+" "+y;
+                else d += " L "+x+" "+y;
+            });
+            return '<path d="'+d+'" class="chart-line" stroke="'+color+'" />';
+        }
+
+        function makeDots(arr, color) {
+            var dots = "";
+            arr.forEach(function(val, idx){
+                if(val === 0) return; 
+                var x = idx * step;
+                var y = 100 - val;
+                dots += '<circle cx="'+x+'" cy="'+y+'" class="chart-dot" stroke="'+color+'" />';
+            });
+            return dots;
+        }
+
+        var svg = '<svg class="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">';
+        svg += '<line x1="0" y1="25" x2="100" y2="25" class="chart-grid" />';
+        svg += '<line x1="0" y1="50" x2="100" y2="50" class="chart-grid" />';
+        svg += '<line x1="0" y1="75" x2="100" y2="75" class="chart-grid" />';
+        svg += makePath(dataPoints.energy, "var(--energy)");
+        svg += makePath(dataPoints.focus, "var(--focus)");
+        svg += makePath(dataPoints.drive, "var(--drive)");
+        svg += makeDots(dataPoints.energy, "var(--energy)");
+        svg += makeDots(dataPoints.focus, "var(--focus)");
+        svg += makeDots(dataPoints.drive, "var(--drive)");
+        svg += '</svg>';
+        chartBox.innerHTML = svg;
+
+        var entries = safeKeys(state.dailyLogs).length;
+        var msg = "Insufficient data for trend analysis. Log consistent days.";
+        
+        var avg = arr => arr.filter(v => v > 0).reduce((a,b) => a+b, 0) / (arr.filter(v => v > 0).length || 1);
+        var avgE = avg(dataPoints.energy);
+        var avgF = avg(dataPoints.focus);
+        var avgD = avg(dataPoints.drive);
+
+        if (entries > 2) {
+            if(avgE < 50) msg = "ALERT: Metabolic Integrity compromised. Prioritize sleep and hydration.";
+            else if(avgF < avgE && avgF < avgD) msg = "OBSERVATION: High energy, low focus. You are 'spinning wheels'. Deploy Reset Protocol.";
+            else if(avgD < 50) msg = "ALERT: Drift detected. Review Mission Parameters immediately.";
+            else msg = "STATUS: Systems Nominal. Maintain cadence.";
+        }
+
+        container.innerHTML = '<div class="intel-body">'+msg+'</div>'; 
+    }
+
+    function renderAnchors() {
+        var log = getTodayLog();
+        var list = document.getElementById('anchor-list');
+        if(!list) return;
+        if(!log.anchors || log.anchors.length === 0) {
+            list.innerHTML = '<div style="font-size:11px; color:#444; font-style:italic;">No anchors logged today.</div>';
+            return;
+        }
+        list.innerHTML = log.anchors.map(function(txt){
+            return '<div style="background:#1a1a1a; padding:8px; border-left:2px solid var(--drive); font-size:12px;">'+txt+'</div>';
+        }).join('');
+    }
+
+    function openModal(id){ 
+        document.getElementById(id).classList.add('visible'); 
+        if(id === 'modal-drive') { renderRoster(); renderAnchors(); } 
+        if(id === 'modal-fuel-setup') {
+            document.getElementById('fuel-selector').value = state.fuelProto || "BALANCED";
+            updateFuelDesc();
+        }
+        if(id === 'modal-intel') generateIntel(); 
+        
+        if(id === 'modal-log') {
+            var log = getTodayLog();
+            if(log.dailyAnchor) {
+                document.getElementById('daily-anchor').value = log.dailyAnchor;
+            }
+            document.getElementById('log-sleep').disabled = log.bootCompleted;
+        }
+    }
+    function closeModal(id){ document.getElementById(id).classList.remove('visible'); }
+    function executeDirective() { if(typeof currentDirectiveAction === 'function') currentDirectiveAction(); }
+
+    function logToolUsage(toolName, detail) {
+        var log = getTodayLog();
+        if (detail === undefined) detail = true;
+        if(!log.tools) log.tools = {};
+        if (toolName.indexOf('breath_') === 0) log.tools[toolName] = (log.tools[toolName] || 0) + 1;
+        else log.tools[toolName] = detail;
+        state.xp += 10; 
+        saveTodayLog(log);
+        recalculateStreak(); 
+    }
+
+    function updateSlidersUI(){
+      var e = document.getElementById('range-energy').value; 
+      var f = document.getElementById('range-focus').value; 
+      var d = document.getElementById('range-drive').value;
+      document.getElementById('val-energy').innerText = e + "%"; 
+      document.getElementById('val-focus').innerText = f + "%"; 
+      document.getElementById('val-drive').innerText = d + "%";
+    }
+
+    function saveFuelProto(){ state.fuelProto = document.getElementById('fuel-selector').value; saveState(); updateUI(); closeModal('modal-fuel-setup'); }
+    function updateFuelDesc(){ var map = { "BALANCED": "Standard clean eating.", "KETO": "Fat adapted engine.", "CARNIVORE": "Animal based.", "IF": "Time restricted feeding." }; var v = document.getElementById('fuel-selector').value; document.getElementById('fuel-desc-text').innerText = map[v]; }
+    function logTraining(){ var v = document.getElementById('quick-train').value; if(v) logToolUsage('training', v); }
+
+    function runHeatScript(){ 
+        var v = document.getElementById('heat-trigger').value; 
+        var out = document.getElementById('heat-output'); 
+        var btn = document.getElementById('heat-action-btn'); 
+        if(!v) { out.innerText = "Select a trigger..."; btn.classList.add('hidden'); return; } 
+        logToolUsage('heat_trigger', v); 
+        if(v === 'DISRESPECT') {
+            out.innerText = "Ego is reacting. Cool the system.";
+            btn.innerText = "RUN RESET PROTOCOL (4-in / 8-out)";
+            btn.onclick = function() { startBreathSession('RESET'); };
+        } 
+        else if(v === 'CHAOS') {
+            out.innerText = "Noise is high. Stabilize the signal.";
+            btn.innerText = "RUN FOCUS PROTOCOL (4-4-4-4)";
+            btn.onclick = function() { startBreathSession('FOCUS'); };
+        } 
+        else if(v === 'FATIGUE') {
+            out.innerText = "State is low. Generate energy.";
+            btn.innerText = "RUN CHARGE PROTOCOL (3-in / 3-out)";
+            btn.onclick = function() { startBreathSession('CHARGE'); };
+        }
+        btn.classList.remove('hidden'); 
+    }
+
+    function saveBrainDump(){ var v = document.getElementById('brain-dump').value; if(v.trim()){ logToolUsage('brain_dump', true); alert("Signal Cleared."); document.getElementById('brain-dump').value = ""; openReRate('BRAIN'); } }
+    function saveMission(){ var t = document.getElementById('mission-target').value; var n = document.getElementById('mission-next').value; var c = document.getElementById('mission-constraint').value; var log = getTodayLog(); log.mission = { target: t, next: n, constraint: c }; saveTodayLog(log); alert("Mission Locked. Go execute."); openReRate('MISSION'); }
+    function saveAnchor(){ var v = document.getElementById('anchor-input').value; if(v.trim()){ var log = getTodayLog(); log.anchors.push(v); saveTodayLog(log); alert("Anchor Set."); document.getElementById('anchor-input').value = ""; renderAnchors(); openReRate('ANCHOR'); } }
+
+    function renderRoster(){ 
+        var list = document.getElementById('roster-list'); 
+        var bots = [ {name: "You", xp: state.xp, me: true}, {name: "Standard: Elite", xp: 5000, me: false}, {name: "Standard: Pro", xp: 2000, me: false} ].sort(function(a,b){ return b.xp - a.xp; }); 
+        list.innerHTML = bots.map(function(b, i){ return '<div class="roster-row" style="'+(b.me ? 'border-left:3px solid var(--drive); padding-left:10px; background:#1a1a1a;' : '')+'"> <div style="font-weight:800;">#'+(i+1)+' '+b.name+'</div> <div style="font-family:monospace; color:var(--text-muted);">'+b.xp+' XP</div> </div>'; }).join(''); 
+    }
+
+    function showInfo(e, key) { e.stopPropagation(); var def = TOOL_DEFINITIONS[key]; if(def) { document.getElementById('info-title').innerText = def.t; document.getElementById('info-body').innerText = def.d; openModal('info-modal'); } }
+
+    function openReRate(toolKey) {
+        var imp = TOOL_IMPACTS[toolKey] || TOOL_IMPACTS['DEFAULT'];
+        document.getElementById('impact-mental').innerText = imp.m;
+        document.getElementById('impact-physical').innerText = imp.p;
+        var log = getTodayLog();
+        document.getElementById('rr-energy').value = log.energy;
+        document.getElementById('rr-focus').value = log.focus;
+        document.getElementById('rr-drive').value = log.drive;
+        updateRrateUI();
+        openModal('modal-rerate');
+    }
+
+    function updateRrateUI(){ 
+        var e = document.getElementById('rr-energy').value; 
+        var f = document.getElementById('rr-focus').value; 
+        var d = document.getElementById('rr-drive').value; 
+        document.getElementById('rr-val-energy').innerText = e + "%"; 
+        document.getElementById('rr-val-focus').innerText = f + "%"; 
+        document.getElementById('rr-val-drive').innerText = d + "%"; 
+    }
+
+    function submitReRate(){ 
+        var log = getTodayLog(); 
+        log.energy = parseInt(document.getElementById('rr-energy').value); 
+        log.focus = parseInt(document.getElementById('rr-focus').value); 
+        log.drive = parseInt(document.getElementById('rr-drive').value); 
+        if(!log.submitted) { log.submitted = true; recalculateStreak(); } 
+        saveTodayLog(log); 
+        closeModal('modal-rerate'); 
+    }
+
+    // --- BREATH ENGINE ---
+    function setBreathBoxSize(maxScale) {
+        if(!maxScale) maxScale = 1.4;
+        var box = document.getElementById('breath-box');
+        var container = document.getElementById('breath-container');
+        if(!box || !container) return;
+        var vh = window.innerHeight; var vw = window.innerWidth;
+        if (window.visualViewport) { vh = window.visualViewport.height; vw = window.visualViewport.width; }
+        var availH = Math.max(150, vh - 250);
+        var base = Math.floor(Math.min(vw * 0.7, availH) / maxScale);
+        engine.baseSize = base;
+        box.style.width = base + "px"; box.style.height = base + "px";
+    }
+
+    function startBreathSession(type){ 
+        openModal('modal-breath'); 
+        var p = PROTOCOLS[type]; 
+        engine.currentType = type; 
+        document.getElementById('breath-title-ui').innerText = type + " PROTOCOL"; 
+        document.getElementById('breath-desc-ui').innerText = p.desc; 
+        document.getElementById('breath-container').style.display = 'flex'; 
+        setTimeout(function(){ 
+            setBreathBoxSize(); 
+            var box = document.getElementById('breath-box'); 
+            if(engine.baseSize){ box.style.transition = 'none'; box.style.width = engine.baseSize + 'px'; box.style.height = engine.baseSize + 'px'; box.offsetHeight; } 
+            engine.active = true; 
+            runCycle(p); 
+        }, 100); 
+    }
+
+    function stopBreathSession(){ 
+        if(!engine.active) { closeModal('modal-breath'); return; }
+        var finishedType = engine.currentType;
+        state.lastBreathType = finishedType;
+        state.lastBreathTime = todayKey();
+        logToolUsage('breath_' + finishedType); 
+        engine.active = false; clearInterval(engine.interval); clearTimeout(engine.timer); 
+        document.getElementById('breath-container').style.display = 'none'; 
+        closeModal('modal-breath'); 
+        setTimeout(function(){ openReRate(finishedType); }, 150); 
+    }
+
+    function runCycle(p){ 
+        if(!engine.active) return; 
+        var MAX = 1.4; var MIN = 1.0; 
+        doPhase("INHALE", p.inhale, MAX, function(){ 
+            if(p.holdIn > 0) doPhase("HOLD", p.holdIn, MAX, function(){ 
+                doPhase("EXHALE", p.exhale, MIN, function(){ 
+                    if(p.holdOut > 0) doPhase("HOLD", p.holdOut, MIN, function(){ runCycle(p); }); 
+                    else runCycle(p); 
+                }); 
+            }); 
+            else doPhase("EXHALE", p.exhale, MIN, function(){ 
+                if(p.holdOut > 0) doPhase("HOLD", p.holdOut, MIN, function(){ runCycle(p); }); 
+                else runCycle(p); 
+            }); 
+        }); 
+    }
+
+    function doPhase(lbl, ms, scale, next){ 
+        if(!engine.active) return; 
+        var box = document.getElementById('breath-box'); 
+        var txt = document.getElementById('instruction-text'); 
+        var tmr = document.getElementById('timer-text'); 
+        txt.innerText = lbl; 
+        var color = "#fff"; 
+        if(lbl === "INHALE") color = "var(--energy)"; 
+        else if(lbl === "EXHALE") color = "var(--danger)"; 
+        else color = "#fff";
+        box.style.borderColor = color; tmr.style.color = color; 
+        var base = engine.baseSize || 200; 
+        var target = Math.round(base * scale); 
+        box.style.transition = "width "+ms+"ms linear, height "+ms+"ms linear, border-color "+ms+"ms linear"; 
+        box.style.width = target + "px"; box.style.height = target + "px"; 
+        var sec = Math.ceil(ms/1000); 
+        tmr.innerText = sec; 
+        clearInterval(engine.interval); 
+        engine.interval = setInterval(function(){ sec--; if(sec >= 0) tmr.innerText = sec; }, 1000); 
+        engine.timer = setTimeout(function(){ clearInterval(engine.interval); next(); }, ms); 
+    }
+  </script>
+</body>
+</html>
